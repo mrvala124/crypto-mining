@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>USDT Wallet with Mining Block</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #111;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+    }
+
+    .container {
+      width: 450px;
+      background-color: #1e1e1e;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #4caf50;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .balance-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 18px;
+      margin-bottom: 25px;
+      animation: fadeIn 2s ease;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      transition: transform 0.3s ease;
+    }
+
+    label {
+      font-size: 16px;
+      color: #fff;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 8px;
+      border-radius: 8px;
+      border: 1px solid #4caf50;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, button:hover {
+      border-color: #4caf50;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .transaction-history {
+      margin-top: 20px;
+    }
+
+    .history-item {
+      background-color: #2c2c2c;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      opacity: 0;
+      animation: fadeIn 1.5s ease forwards;
+    }
+
+    .history-item:nth-child(even) {
+      animation-delay: 0.2s;
+    }
+
+    .history-item:nth-child(odd) {
+      animation-delay: 0.4s;
+    }
+
+    .mining-section {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 18px;
+      border-top: 2px solid #444;
+      padding-top: 20px;
+      color: #4caf50;
+    }
+
+    .mining-history {
+      margin-top: 20px;
+      font-size: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    .mining-history-item {
+      background-color: #333;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      color: #4caf50;
+      animation: fadeIn 1.5s ease forwards;
+    }
+
+    .mining-history-item:nth-child(even) {
+      animation-delay: 0.2s;
+    }
+
+    .mining-history-item:nth-child(odd) {
+      animation-delay: 0.4s;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .pagination button {
+      background-color: #4caf50;
+      color: white;
+      padding: 10px;
+      border: none;
+      margin: 0 5px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .pagination button:hover {
+      background-color: #45a049;
+    }
+
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>USDT Wallet</h1>
+
+    <!-- Balance Section -->
+    <div class="balance-section">
+      <p>Balance</p>
+      <p id="walletBalance">$4000.00</p>
+    </div>
+
+    <!-- Send USDT Section -->
+    <div class="form-group">
+      <label for="recipientAddress">Recipient Wallet Address</label>
+      <input type="text" id="recipientAddress" placeholder="Enter recipient wallet address">
+    </div>
+    <div class="form-group">
+      <label for="transferAmount">Amount to Transfer (USDT)</label>
+      <input type="number" id="transferAmount" placeholder="Enter amount to send" min="1" max="4000">
+    </div>
+    <button id="sendButton">Send USDT</button>
+
+    <!-- Transaction History Section -->
+    <div class="transaction-history">
+      <h3>Transaction History</h3>
+      <div id="transactionHistory"></div>
+    </div>
+
+    <!-- Mining Section -->
+    <div class="mining-section">
+      <h3>USDT Mining (Automatic)</h3>
+      <div class="mining-history" id="miningHistory"></div>
+
+      <!-- Pagination Controls -->
+      <div class="pagination" id="paginationControls"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let walletBalance = parseFloat(localStorage.getItem("walletBalance")) || 4000; // Retrieve wallet balance from localStorage
+    const transactionHistory = JSON.parse(localStorage.getItem("transactionHistory")) || []; // Retrieve transaction history
+    const miningHistory = JSON.parse(localStorage.getItem("miningHistory")) || []; // Retrieve mining history
+    const blocksPerPage = 3; // Number of blocks per page
+    let currentPage = 1;
+
+    // Display initial balance
+    document.getElementById('walletBalance').textContent = `$${walletBalance.toFixed(2)}`;
+
+    // Send USDT
+    document.getElementById('sendButton').addEventListener('click', function() {
+      const recipientAddress = document.getElementById('recipientAddress').value;
+      const transferAmount = parseFloat(document.getElementById('transferAmount').value);
+
+      if (!recipientAddress || recipientAddress.length === 0) {
+        alert('Please enter a valid recipient wallet address.');
+        return;
+      }
+
+      if (isNaN(transferAmount) || transferAmount <= 0 || transferAmount > walletBalance) {
+        alert('Please enter a valid transfer amount.');
+        return;
+      }
+
+      // Update wallet balance after transfer
+      walletBalance -= transferAmount;
+      document.getElementById('walletBalance').textContent = `$${walletBalance.toFixed(2)}`;
+
+      // Record transaction
+      const transaction = {
+        recipient: recipientAddress,
+        amount: transferAmount,
+        date: new Date().toLocaleString(),
+      };
+      transactionHistory.push(transaction);
+
+      // Save to localStorage
+      localStorage.setItem("walletBalance", walletBalance);
+      localStorage.setItem("transactionHistory", JSON.stringify(transactionHistory));
+
+      // Display transaction history
+      displayTransactionHistory();
+
+      // Alert the user that the transaction was successful
+      alert(`Transaction successful! Sent $${transferAmount} USDT to ${recipientAddress}`);
+    });
+
+    // Display Transaction History
+    function displayTransactionHistory() {
+      const historyContainer = document.getElementById('transactionHistory');
+      historyContainer.innerHTML = ''; // Clear previous history
+
+      transactionHistory.forEach((transaction, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.classList.add('history-item');
+        historyItem.innerHTML = `
+          <p><strong>Transaction #${index + 1}</strong></p>
+          <p><strong>Recipient:</strong> ${transaction.recipient}</p>
+          <p><strong>Amount:</strong> $${transaction.amount.toFixed(2)} USDT</p>
+          <p><strong>Date:</strong> ${transaction.date}</p>
+        `;
+        historyContainer.appendChild(historyItem);
+      });
+    }
+
+    // Generate Random Mining Reward
+    function getRandomReward() {
+      // Random reward between 0.04$ and 10$
+      return (Math.random() * (10 - 0.04) + 0.04).toFixed(2);
+    }
+
+    // Automatic Mining Process
+    setInterval(function() {
+      const miningReward = getRandomReward(); // Get a random reward for the block
+      const blockID = miningHistory.length + 1;
+      const blockTimestamp = new Date().toLocaleString();
+
+      // Add mined block to the history
+      miningHistory.push({
+        blockID,
+        reward: miningReward,
+        timestamp: blockTimestamp,
+      });
+
+      // Update wallet balance
+      walletBalance += parseFloat(miningReward);
+      document.getElementById('walletBalance').textContent = `$${walletBalance.toFixed(2)}`;
+
+      // Save to localStorage
+      localStorage.setItem("walletBalance", walletBalance);
+      localStorage.setItem("miningHistory", JSON.stringify(miningHistory));
+
+      // Display Mining History with pagination
+      displayMiningHistory();
+    }, 5000); // Mining every 5 seconds
+
+    // Display Mining History with Pagination
+    function displayMiningHistory() {
+      const miningContainer = document.getElementById('miningHistory');
+      miningContainer.innerHTML = ''; // Clear previous history
+
+      // Paginate blocks
+      const startIdx = (currentPage - 1) * blocksPerPage;
+      const endIdx = startIdx + blocksPerPage;
+      const currentPageBlocks = miningHistory.slice(startIdx, endIdx);
+
+      currentPageBlocks.forEach((block, index) => {
+        const miningItem = document.createElement('div');
+        miningItem.classList.add('mining-history-item');
+        miningItem.innerHTML = `
+          <p><strong>Block #${block.blockID}</strong></p>
+          <p><strong>Reward:</strong> $${block.reward} USDT</p>
+          <p><strong>Timestamp:</strong> ${block.timestamp}</p>
+        `;
+        miningContainer.appendChild(miningItem);
+      });
+
+      // Update Pagination Controls
+      updatePaginationControls();
+    }
+
+    // Update Pagination Controls
+    function updatePaginationControls() {
+      const paginationControls = document.getElementById('paginationControls');
+      paginationControls.innerHTML = ''; // Clear existing pagination
+
+      const totalPages = Math.ceil(miningHistory.length / blocksPerPage);
+
+      // Previous page button
+      if (currentPage > 1) {
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Previous';
+        prevButton.addEventListener('click', () => {
+          currentPage--;
+          displayMiningHistory();
+        });
+        paginationControls.appendChild(prevButton);
+      }
+
+      // Next page button
+      if (currentPage < totalPages) {
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Next';
+        nextButton.addEventListener('click', () => {
+          currentPage++;
+          displayMiningHistory();
+        });
+        paginationControls.appendChild(nextButton);
+      }
+    }
+
+  </script>
+
+</body>
+</html>
